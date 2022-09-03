@@ -43,7 +43,7 @@ jobs:
         run: sam deploy --no-fail-on-empty-changeset --s3-bucket $bucket --s3-prefix $prefix --stack-name $stack --capabilities $capabilities --region ${{ github.event.inputs.region }}
         env:
           bucket: "underlying-deployments"
-          prefix: "INFRASTRUCTURE"
-          stack: "INFRASTRUCTURE"
+          prefix: "IRA-DATA-INFRASTRUCTURE"
+          stack: "IRA-DATA-INFRASTRUCTURE""
           capabilities: "CAPABILITY_IAM"
           template: "infrastructure/template.yaml"
