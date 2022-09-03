@@ -1,0 +1,26 @@
+AWSTemplateFormatVersion: 2010-09-09
+Transform: AWS::Serverless-2016-10-31
+Description: Resources for datalake infrastructure deployment
+
+
+Parameters:
+
+  LambdaRole:
+    Type: String
+    Default: arn:aws:iam::182960656850:role/lambda-role
+    Description: Role for lambda permission on AWS resources
+
+
+Resources:
+
+  OptionsDataBucket:
+    Type: AWS::S3::Bucket
+    Properties:
+      BucketName: ira-raw-data-market
+      VersioningConfiguration:
+        Status: Suspended
+      PublicAccessBlockConfiguration:
+        BlockPublicAcls: true
+        BlockPublicPolicy: true
+        IgnorePublicAcls: true
+        RestrictPublicBuckets: true

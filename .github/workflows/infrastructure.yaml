@@ -1,0 +1,49 @@
+name: Deploy Infrastructure CloudFormation Stacks
+
+on:
+  workflow_dispatch:
+    inputs:
+      region:
+        description: "AWS Region"
+        required: true
+        default: "us-east-1"
+
+jobs:
+  infrastructure-deployment:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v2
+
+      - name: Configure AWS credentials
+        id: creds
+        uses: aws-actions/configure-aws-credentials@v1
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ github.event.inputs.region }}
+
+      - name: Install SAM dependencies
+        uses: aws-actions/setup-sam@v1
+
+      - name: Validate Infrastructure template
+        id: validate-template
+        run: sam validate -t $template
+        env:
+          template: "infrastructure/template.yaml"
+
+      - name: Build Infrastructure Service AWS
+        id: infrastructure-build
+        run: sam build --template-file $template
+        env:
+          template: "infrastructure/template.yaml"
+
+      - name: Deploy Infrastructure Service AWS
+        id: infrastructure-deploy
+        run: sam deploy --no-fail-on-empty-changeset --s3-bucket $bucket --s3-prefix $prefix --stack-name $stack --capabilities $capabilities --region ${{ github.event.inputs.region }}
+        env:
+          bucket: "underlying-deployments"
+          prefix: "INFRASTRUCTURE"
+          stack: "INFRASTRUCTURE"
+          capabilities: "CAPABILITY_IAM"
+          template: "infrastructure/template.yaml"
