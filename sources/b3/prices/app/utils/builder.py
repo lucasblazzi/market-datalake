@@ -10,7 +10,7 @@ base_path = os.path.dirname(os.path.abspath(__file__))
 class Builder:
     def __init__(self, dfs, year):
         self.dfs = dfs
-        self.names = json.load(open(os.path.join(base_path, "./plans/names.json"), encoding="utf8"))
+        self.names = json.load(open(os.path.join(base_path, "../plans/names.json"), encoding="utf8"))
         self.year = year
 
     @property

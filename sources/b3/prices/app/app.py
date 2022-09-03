@@ -20,7 +20,7 @@ daily_data = b"gAAAAABhvn3zDitlQLagTDCxbMMFHStNqnxCnAq_CS37Yqnm1KADWdvb_BM3iLaD1
              b"htXFtUXa41m6-PuyRGDl8jHk7EE3i6VSOJ7Sn4ewZBjdz9VpltLvrA1kfg0kR9I9yg=="
 
 
-BUCKET_NAME = os.environ.get("BUCKET", "ira-market-raw-data")
+BUCKET_NAME = os.environ.get("BUCKET", "ira-raw-data-market")
 
 
 def decrypt_url(url):
@@ -28,7 +28,7 @@ def decrypt_url(url):
     return f.decrypt(url).decode()
 
 
-async def save_data(df):
+async def save_data(df, year):
     tasks = list()
     async with S3() as s3:
         buffer = BytesIO()
@@ -36,7 +36,6 @@ async def save_data(df):
         df.to_csv(buffer, index=False)
         tasks.append(s3.insert_file(buffer.getvalue(), f"s3://{BUCKET_NAME}/b3/prices/{year}.csv"))
         await asyncio.gather(*tasks)
-    return register
 
 
 async def loader(event):
@@ -47,7 +46,7 @@ async def loader(event):
         crawler = Crawler(url=url, txt_field_length=daily_field_length)
         raw_results.extend(crawler.zip_crawl())
         results = Builder(dfs=raw_results, year=year).architect
-        await save_data(results)
+        await save_data(results, year)
         print(f"[SUCCESSFULL] {year}")
 
 
@@ -57,4 +56,4 @@ def lambda_handler(event, context):
     loop.close()
 
 
-lambda_handler({"start": 2021, "end": 2022}, "")
+lambda_handler({"start": 2000, "end": 2022}, "")

@@ -24,3 +24,27 @@ Resources:
         BlockPublicPolicy: true
         IgnorePublicAcls: true
         RestrictPublicBuckets: true
+
+  OptionPriceDatalakeBucket:
+    Type: AWS::S3::Bucket
+    Properties:
+      BucketName: ira-datalake-option-price
+      VersioningConfiguration:
+        Status: Suspended
+      PublicAccessBlockConfiguration:
+        BlockPublicAcls: true
+        BlockPublicPolicy: true
+        IgnorePublicAcls: true
+        RestrictPublicBuckets: true
+
+  StockPriceDatalakeBucket:
+    Type: AWS::S3::Bucket
+    Properties:
+      BucketName: ira-datalake-stock-price
+      VersioningConfiguration:
+        Status: Suspended
+      PublicAccessBlockConfiguration:
+        BlockPublicAcls: true
+        BlockPublicPolicy: true
+        IgnorePublicAcls: true
+        RestrictPublicBuckets: true

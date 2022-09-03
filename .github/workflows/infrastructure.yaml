@@ -1,4 +1,4 @@
-name: Deploy Infrastructure CloudFormation Stacks
+name: IRA Infrastructure CloudFormation Stack
 
 on:
   workflow_dispatch:
