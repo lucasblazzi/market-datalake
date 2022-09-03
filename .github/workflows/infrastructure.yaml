@@ -44,6 +44,6 @@ jobs:
         env:
           bucket: "underlying-deployments"
           prefix: "IRA-DATA-INFRASTRUCTURE"
-          stack: "IRA-DATA-INFRASTRUCTURE""
+          stack: "IRA-DATA-INFRASTRUCTURE"
           capabilities: "CAPABILITY_IAM"
           template: "infrastructure/template.yaml"
