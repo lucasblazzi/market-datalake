@@ -48,3 +48,15 @@ Resources:
         BlockPublicPolicy: true
         IgnorePublicAcls: true
         RestrictPublicBuckets: true
+
+  CompanyInfoDatalakeBucket:
+    Type: AWS::S3::Bucket
+    Properties:
+      BucketName: ira-datalake-company-info
+      VersioningConfiguration:
+        Status: Suspended
+      PublicAccessBlockConfiguration:
+        BlockPublicAcls: true
+        BlockPublicPolicy: true
+        IgnorePublicAcls: true
+        RestrictPublicBuckets: true

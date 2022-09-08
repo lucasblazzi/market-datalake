@@ -19,7 +19,7 @@ class Crawler:
     def __init__(self, proxy_source=None, url=None):
         self.proxy_source = proxy_source
         self.ua = UserAgent()
-        self.proxies = self.get_proxies()
+        # self.proxies = self.get_proxies()
         self.url = url
 
     def random_proxy(self):
@@ -47,19 +47,22 @@ class Crawler:
 
     @retry(retry_on_exception=retry_errors, stop_max_attempt_number=10)
     def csv_crawl(self):
-        data = requests.get(self.url, proxies=self.random_proxy()).text
+        # data = requests.get(self.url, proxies=self.random_proxy()).text
+        print(f"[RUNNING] {self.url}")
+        data = requests.get(self.url).text
         return self.csv_to_dataframe(data, self.url.split("/")[-1])
 
     @retry(retry_on_exception=retry_errors, stop_max_attempt_number=10)
     def zip_crawl(self):
         results = list()
         for zip_url in self.get_available_history():
-            data = requests.get(zip_url, proxies=self.random_proxy()).content
+            # data = requests.get(zip_url, proxies=self.random_proxy()).content
+            data = requests.get(zip_url).content
             zip_file = ZipFile(io.BytesIO(data))
             results.extend([self.csv_to_dataframe(zip_file.open(_csv), _csv) for _csv in zip_file.namelist()])
         return results
 
     def crawl(self):
         if "csv" in self.url.split("."):
-            return self.csv_crawl()
+            return [self.csv_crawl()]
         return self.zip_crawl()

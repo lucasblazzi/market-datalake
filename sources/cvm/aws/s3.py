@@ -1,7 +1,8 @@
-import asyncio
-from s3fs import S3FileSystem
 import re
+import asyncio
 from io import BytesIO
+
+from s3fs import S3FileSystem
 
 s3_pattern = re.compile(r"(s3:\/\/(?P<bucket>.*?(?=\/))\/(?P<path>.*?.*))")
 
@@ -11,12 +12,14 @@ class S3:
         self.session = None
 
     async def __aenter__(self):
-        s3 = S3FileSystem(asynchronous=True, loop=asyncio.get_running_loop())
+        s3 = S3FileSystem(asynchronous=True,
+                          loop=asyncio.get_running_loop())
         self.session = await s3.set_session(refresh=True)
         return self
 
     async def __aexit__(self, exc_type, exc_val, exc_tb):
-        await self.session.close()
+        self.session.close()
+        print("Process ended")
 
     async def get_file(self, path):
         match = s3_pattern.match(path)

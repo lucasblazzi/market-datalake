@@ -11,49 +11,82 @@ from utils.builder import Builder
 from aws.s3 import S3
 
 
-daily_field_length = [2, 8, 2, 12, 3, 12, 10, 3, 4, 13, 13, 13, 13, 13, 13, 13, 5, 18, 18, 13, 1, 8, 7, 13, 12, 3]
 
-# https://www.b3.com.br/data/files/C8/F3/08/B4/297BE410F816C9E492D828A8/SeriesHistoricas_Layout.pdf
+base_path = os.path.dirname(os.path.abspath(__file__))
+
 # https://www.b3.com.br/data/files/4F/91/A8/CD/2A280710E7BCA507DC0D8AA8/TradeIntradayFile.pdf
-
-daily_data = b"gAAAAABhvn3zDitlQLagTDCxbMMFHStNqnxCnAq_CS37Yqnm1KADWdvb_BM3iLaD12mykvVHrwR9PqECM8JZDCMioC-UXWFu" \
-             b"htXFtUXa41m6-PuyRGDl8jHk7EE3i6VSOJ7Sn4ewZBjdz9VpltLvrA1kfg0kR9I9yg=="
-
 
 BUCKET_NAME = os.environ.get("BUCKET", "ira-raw-data-market")
 
 
-def decrypt_url(url):
-    f = Fernet(b'zBD0XJb_uD0Qn3tDjtt-Zk1MGSh2ZRlg6nTMXkcdH9U=')
-    return f.decrypt(url).decode()
+
+class Loader:
+    def __init__(self, schema, args):
+        self.schema = json.load(open(os.path.join(base_path, "plans/catalog.json"), encoding="utf8")).get(schema)
+        self.args = args
+
+    @staticmethod
+    async def save_data(data):
+        tasks = list()
+        async with S3() as s3:
+            for buffer, s3_path in data:
+                print(f"[RUNNING] TASK - {s3_path}")
+                tasks.append(s3.insert_file(buffer.getvalue(), s3_path))
+            await asyncio.gather(*tasks)
+
+    async def historical_quotes_loader(self):
+        daily_field_length = [2, 8, 2, 12, 3, 12, 10, 3, 4, 13, 13, 13, 13, 13,
+                              13, 13, 5, 18, 18, 13, 1, 8, 7, 13, 12, 3]
+        url = f"{self.schema['url']}{self.args['year']}.ZIP"
+        raw_results = Crawler(url=url, txt_field_length=daily_field_length).zip_crawl()
+        results = Builder(dfs=raw_results, year=year).architect.sort_values("date")
+        return [results]
+
+    def historical_quotes_path_map(self, name):
+        return f"{self.args['year']}"
+
+    def prepare_result(self, result):
+        res = list()
+        for df in result:
+            path = f"{self.schema['path']}/{getattr(self, self.schema['map_path'])(df.index.name)}"
+            s3_path = f"s3://{BUCKET_NAME}/b3/{path}.csv"
+            buffer = BytesIO()
+            df.to_csv(buffer, index=False)
+            res.append((buffer, s3_path))
+        return res
+
+    async def load(self):
+        function = f"{self.schema['process']}_loader"
+        print(f"[STARTING] {function}")
+        result = await getattr(self, function)()
+        print(f"[SUCCESS] RESULTS PROCESSED")
+        print(f"[RUNNING] PREPARING RESULTS")
+        slots = self.prepare_result(result)
+        print(f"[RUNNING] SAVING RESULTS")
+        await self.save_data(slots)
+        print(f"[SUCCESS] ALL FILES SAVED")
 
 
-async def save_data(df, year):
-    tasks = list()
-    async with S3() as s3:
-        buffer = BytesIO()
-        df = df.sort_values("date")
-        df.to_csv(buffer, index=False)
-        tasks.append(s3.insert_file(buffer.getvalue(), f"s3://{BUCKET_NAME}/b3/prices/{year}.csv"))
-        await asyncio.gather(*tasks)
 
-
-async def loader(event):
-    raw_results = list()
-    for year in range(event["start"], event["end"] + 1):
-        print(f"LOADING {year}")
-        url = f"{decrypt_url(daily_data)}{year}.ZIP"
-        crawler = Crawler(url=url, txt_field_length=daily_field_length)
-        raw_results.extend(crawler.zip_crawl())
-        results = Builder(dfs=raw_results, year=year).architect
-        await save_data(results, year)
-        print(f"[SUCCESSFULL] {year}")
+async def handler(event):
+    await Loader(event["schema"], event["args"]).load()
 
 
 def lambda_handler(event, context):
     loop = asyncio.get_event_loop()
-    loop.run_until_complete(loader(event))
-    loop.close()
+    loop.run_until_complete(handler(event))
+    # loop.close()
 
 
-lambda_handler({"start": 2000, "end": 2022}, "")
+event = {
+    "schema": "historical-quotes",
+    "args": {
+        "year": None
+    }
+}
+
+start = 2000
+end = 2022
+for year in range(start, end + 1):
+    event["args"]["year"] = year
+    lambda_handler(event, "")
