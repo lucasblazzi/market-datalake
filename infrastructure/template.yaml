@@ -60,3 +60,27 @@ Resources:
         BlockPublicPolicy: true
         IgnorePublicAcls: true
         RestrictPublicBuckets: true
+
+  CompanyResultsDatalakeBucket:
+    Type: AWS::S3::Bucket
+    Properties:
+      BucketName: ira-datalake-company-results
+      VersioningConfiguration:
+        Status: Suspended
+      PublicAccessBlockConfiguration:
+        BlockPublicAcls: true
+        BlockPublicPolicy: true
+        IgnorePublicAcls: true
+        RestrictPublicBuckets: true
+
+  CompanyDividendsDatalakeBucket:
+    Type: AWS::S3::Bucket
+    Properties:
+      BucketName: ira-datalake-company-dividends
+      VersioningConfiguration:
+        Status: Suspended
+      PublicAccessBlockConfiguration:
+        BlockPublicAcls: true
+        BlockPublicPolicy: true
+        IgnorePublicAcls: true
+        RestrictPublicBuckets: true
