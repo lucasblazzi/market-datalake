@@ -14,7 +14,8 @@ base_path = os.path.dirname(os.path.abspath(__file__))
 
 
 BUCKET_NAME = os.environ.get("BUCKET", "ira-raw-data-market")
-
+LOCAL_PATH = "E:\\data-science\\raw-data"
+LOCAL = True
 
 
 class Loader:
@@ -22,6 +23,13 @@ class Loader:
         self.catalog = json.load(open(os.path.join(base_path, "plans/catalog.json"), encoding="utf8"))
         self.schema = self.catalog.get(schema)
         self.args = args
+
+    async def save_local(self, result):
+        for df in result:
+            path = f"{self.schema['path']}/{getattr(self, self.schema['map_path'])(df.index.name)}"
+            full_path = f"{LOCAL_PATH}/b3/{path}.csv"
+            print(f"SAVING {full_path}")
+            df.to_csv(full_path, index=False)
 
     @staticmethod
     async def save_data(data):
@@ -57,14 +65,15 @@ class Loader:
         df.pop(target_col)
         return df
 
-    async def get_listed_companies(self):
-        schema = self.catalog["traded-companies-info"]
+    async def get_listed_companies(self, cat):
+        schema = self.catalog[cat]
         url = f"{schema['url']}/{self.target_path(schema['payload'])}"
         results = Crawler(url=url).json_crawl(payload=schema["payload"])
         return results
 
     async def general_loader(self, target=None, payload=None):
         url = target if target else f"{self.schema['url']}/{self.target_path(self.schema['payload'])}"
+        print(url)
         payload = payload if payload else self.schema["payload"]
         raw_results = Crawler(url=url).json_crawl(payload=payload)
         raw_results.index.name = self.schema["path"]
@@ -72,7 +81,8 @@ class Loader:
 
     async def traded_companies_info_loader(self):
         result = pd.DataFrame()
-        raw_results = await self.get_listed_companies()
+        target = "bdr-companies-info" if self.schema["path"] == "bdr-companies-info" else "traded-companies-info"
+        raw_results = await self.get_listed_companies(target)
         cvm_codes = list(raw_results["codeCVM"].unique())
         for cvm_code in cvm_codes:
             target = self.catalog["single-traded-company-info"]
@@ -98,8 +108,11 @@ class Loader:
             if not df.empty:
                 result = df.merge(raw_results, on="tradingName", how="left")
                 result.index.name = name
-                slots = self.prepare_result([result])
-                await self.save_data(slots)
+                if LOCAL:
+                    await self.save_local([result])
+                else:
+                    slots = self.prepare_result([result])
+                    await self.save_data(slots)
 
     async def load(self):
         function = f"{self.schema['process']}_loader"
@@ -109,10 +122,13 @@ class Loader:
             return
         print(f"[SUCCESS] RESULTS PROCESSED")
         print(f"[RUNNING] PREPARING RESULTS")
-        slots = self.prepare_result(result)
-        print(f"[RUNNING] SAVING RESULTS")
-        await self.save_data(slots)
-        print(f"[SUCCESS] ALL FILES SAVED")
+        if LOCAL:
+            await self.save_local(result)
+        else:
+            slots = self.prepare_result(result)
+            print(f"[RUNNING] SAVING RESULTS")
+            await self.save_data(slots)
+            print(f"[SUCCESS] ALL FILES SAVED")
 
 
 
@@ -127,8 +143,7 @@ def lambda_handler(event, context):
 
 
 event = {
-    "schema": "option-adjusted-prices",
-    # "schema": "traded-companies-info",
+    "schema": "bdr-companies-info",
     "args": {}
 }
 

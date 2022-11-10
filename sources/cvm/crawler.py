@@ -18,7 +18,7 @@ def retry_errors(exception):
 class Crawler:
     def __init__(self, proxy_source=None, url=None):
         self.proxy_source = proxy_source
-        self.ua = UserAgent()
+        # self.ua = UserAgent()
         # self.proxies = self.get_proxies()
         self.url = url
 
@@ -32,8 +32,9 @@ class Crawler:
         return [{"https": f"https://{ip}"} for ip in ips]
 
     def get_available_history(self):
-        req = Request(self.url, headers={"User-Agent": self.ua.random})
-        data = urlopen(req).read().decode("ISO-8859-1")
+        # req = Request(self.url, headers={"User-Agent": self.ua.random})
+        req = Request(self.url, headers={"User-Agent": "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko)"})
+        data = urlopen(req).read().decode("windows-1252")
         files = re.findall('<a href="(.*?).zip">', data)
         return [f"{self.url}{file}.zip" for file in files] if files else [self.url]
 
@@ -41,7 +42,7 @@ class Crawler:
     def csv_to_dataframe(data, name):
         if not isinstance(data, zipfile.ZipExtFile):
             data = io.StringIO(data)
-        df = pd.read_csv(data, delimiter=";", low_memory=False, encoding="ISO-8859-1")
+        df = pd.read_csv(data, sep=";", low_memory=False, encoding="windows-1252", error_bad_lines=False)
         df.index.name = name.split(".")[0]
         return df
 
@@ -49,8 +50,10 @@ class Crawler:
     def csv_crawl(self):
         # data = requests.get(self.url, proxies=self.random_proxy()).text
         print(f"[RUNNING] {self.url}")
-        data = requests.get(self.url).text
-        return self.csv_to_dataframe(data, self.url.split("/")[-1])
+        data = requests.get(self.url)
+        data.encoding = "windows-1252"
+        res = data.text
+        return self.csv_to_dataframe(res, self.url.split("/")[-1])
 
     @retry(retry_on_exception=retry_errors, stop_max_attempt_number=10)
     def zip_crawl(self):

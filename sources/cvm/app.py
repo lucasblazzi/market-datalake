@@ -12,6 +12,8 @@ from aws.s3 import S3
 proxy_source = "https://www.sslproxies.org/"
 base_path = os.path.dirname(os.path.abspath(__file__))
 BUCKET_NAME = os.environ.get("BUCKET", "ira-raw-data-market")
+LOCAL_PATH = "E:\\data-science\\raw-data"
+LOCAL = True
 
 
 
@@ -47,6 +49,17 @@ class Loader:
         chunk_size = 5
         return [slots[i:i + chunk_size] for i in range(0, len(slots), chunk_size)]
 
+    async def save_local(self, result):
+        for df in result:
+            path = f"{self.schema['path']}/{getattr(self, self.schema['map_path'])(df.index.name)}"
+            full_path = f"{LOCAL_PATH}/cvm/{path}.csv"
+            print(f"SAVING {full_path}")
+            try:
+                df.to_csv(full_path, index=False)
+            except FileNotFoundError:
+                os.makedirs(full_path.rsplit('/', 1)[0])
+                df.to_csv(full_path, index=False)
+
     @staticmethod
     async def save_data(chunks):
         for chunk in chunks:
@@ -63,11 +76,14 @@ class Loader:
         result = await getattr(self, function)(args)
         print(f"[SUCCESS] RESULTS PROCESSED")
         print(f"[RUNNING] PREPARING RESULTS")
-        slots = self.prepare_result(result)
-        print(f"[RUNNING] SAVING RESULTS")
-        chunks = self.build_chunks(slots)
-        await self.save_data(chunks)
-        print(f"[SUCCESS] ALL FILES SAVED")
+        if LOCAL:
+            await self.save_local(result)
+        else:
+            slots = self.prepare_result(result)
+            print(f"[RUNNING] SAVING RESULTS")
+            chunks = self.build_chunks(slots)
+            await self.save_data(chunks)
+            print(f"[SUCCESS] ALL FILES SAVED")
 
     async def full_loader(self, args):
         data = Crawler(proxy_source=proxy_source, url=self.schema["url"]).zip_crawl()
@@ -79,10 +95,14 @@ class Loader:
         return data
 
     async def yearly_loader(self, args):
-        url = f"{self.schema['url']}{args['year']}.zip"
-        data = Crawler(proxy_source=proxy_source, url=url).crawl()
+        res = list()
+        for month in range(1, 13):
+            url = f"{self.schema['url']}{args['year']}{str(month).zfill(2)}.zip"
+            print(url)
+            data = Crawler(proxy_source=proxy_source, url=url).zip_crawl()
+            res.extend(data)
         # results = Builder(data).architect
-        return data
+        return res
 
     async def monthly_loader(self, year, month):
         url = f"{self.schema['url']}{year}{month}.csv"
@@ -102,9 +122,9 @@ def lambda_handler(event, context):
 
 
 event = {
-    "schema": "traded-companies-quarterly-results",
+    "schema": "funds-lamina",
     "args": {
-        "year": None
+        "year": ""
     }
 }
 

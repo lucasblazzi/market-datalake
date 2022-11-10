@@ -11,19 +11,27 @@ from utils.builder import Builder
 from aws.s3 import S3
 
 
-
+# https://www.b3.com.br/data/files/C8/F3/08/B4/297BE410F816C9E492D828A8/SeriesHistoricas_Layout.pdf
+# https://www.b3.com.br/data/files/4F/91/A8/CD/2A280710E7BCA507DC0D8AA8/TradeIntradayFile.pdf
 base_path = os.path.dirname(os.path.abspath(__file__))
 
-# https://www.b3.com.br/data/files/4F/91/A8/CD/2A280710E7BCA507DC0D8AA8/TradeIntradayFile.pdf
 
 BUCKET_NAME = os.environ.get("BUCKET", "ira-raw-data-market")
-
+LOCAL_PATH = "E:\\data-science\\raw-data"
+LOCAL = True
 
 
 class Loader:
     def __init__(self, schema, args):
         self.schema = json.load(open(os.path.join(base_path, "plans/catalog.json"), encoding="utf8")).get(schema)
         self.args = args
+
+    async def save_local(self, result):
+        for df in result:
+            path = f"{self.schema['path']}/{getattr(self, self.schema['map_path'])(df.index.name)}"
+            full_path = f"{LOCAL_PATH}/b3/{path}.csv"
+            print(f"SAVING {full_path}")
+            df.to_csv(full_path, index=False)
 
     @staticmethod
     async def save_data(data):
@@ -61,10 +69,13 @@ class Loader:
         result = await getattr(self, function)()
         print(f"[SUCCESS] RESULTS PROCESSED")
         print(f"[RUNNING] PREPARING RESULTS")
-        slots = self.prepare_result(result)
-        print(f"[RUNNING] SAVING RESULTS")
-        await self.save_data(slots)
-        print(f"[SUCCESS] ALL FILES SAVED")
+        if LOCAL:
+            await self.save_local(result)
+        else:
+            slots = self.prepare_result(result)
+            print(f"[RUNNING] SAVING RESULTS")
+            await self.save_data(slots)
+            print(f"[SUCCESS] ALL FILES SAVED")
 
 
 
